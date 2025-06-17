@@ -1,43 +1,46 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
+import { ProductsRepository } from "./products.repository";
+// import { Category } from "@prisma/client";
 
-interface Product {
-  id: string;
+interface CreateProductServiceRequest {
   name: string;
-  model: string;
-  description: string;
+  description?: string;
   price: number;
   inStock: number;
-  category: string;
   isAvailable: boolean;
+  category: string;
   tags: string[];
-  createdAt: string | Date | undefined;
-  updatedAt: string | Date | undefined | null;
-}
-
-interface EditProductDto {
-  name?: string;
-  model?: string;
-  description?: string;
-  price?: number;
-  inStock?: number;
-  category?: string;
-  isAvailable?: boolean;
-  tags?: string[];
 }
 
 @Injectable()
-export class EditProductService {
-  constructor(private readonly productRepository: any) {}
+export class CreateProductService {
+  constructor(private productsRepository: ProductsRepository) {}
 
-  async execute(id: string, data: EditProductDto): Promise<{ product: Product }> {
-    const product = await this.productRepository.findById(id);
+  async execute({
+    name,
+    description,
+    price,
+    inStock,
+    isAvailable,
+    category,
+    tags,
+  }: CreateProductServiceRequest): Promise<void> {
+    const productWithSameName = await this.productsRepository.findByName(name);
 
-    if (!product) {
-      throw new NotFoundException('Product not found');
+    if (productWithSameName) {
+      throw new Error("Product already exists");
     }
 
-    const updatedProduct = await this.productRepository.update(id, data);
+    const product = {
+      name,
+      description,
+      price,
+      inStock,
+      isAvailable,
+      category,
+      tags,
+    };
 
-    return { product: updatedProduct };
+    await this.productsRepository.create(product);
   }
 }

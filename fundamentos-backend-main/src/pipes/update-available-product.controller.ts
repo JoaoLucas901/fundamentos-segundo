@@ -1,41 +1,33 @@
-import { Controller, Patch, Param, Body, NotFoundException, HttpCode } from "@nestjs/common";
+import { Body, Controller, HttpCode, Patch } from "@nestjs/common";
+import { z } from "zod";
+import { ZodValidationPipe } from "../pipes/zod-validation-pipe";
+import { UpdateAvailableProductService } from "./update-available-product.service";
 
-interface UpdateAvailableDto {
-  isAvailable: boolean;
-}
+const updateAvailableProductBodySchema = z.object({
+  ids: z.array(z.string()).min(1, "At least one ID must be provided"),
+  isAvailable: z.boolean(),
+});
 
-interface Product {
-  id: string;
-  name: string;
-  model: string;
-  description: string;
-  price: number;
-  inStock: number;
-  category: string;
-  isAvailable: boolean;
-  tags: string[];
-  createdAt: string | Date | undefined;
-  updatedAt: string | Date | undefined | null;
-}
+const bodyValidationPipe = new ZodValidationPipe(updateAvailableProductBodySchema);
 
-@Controller('/products')
+type UpdateAvailableProductBodySchema = z.infer<typeof updateAvailableProductBodySchema>;
+
+@Controller('/products/available')
 export class UpdateAvailableProductController {
-  constructor(private readonly productRepository: any) {}
+  constructor(private updateAvailableProduct: UpdateAvailableProductService) {}
 
-  @Patch(':id/available')
-  @HttpCode(200)
-  async updateAvailable(
-    @Param('id') id: string,
-    @Body() body: UpdateAvailableDto
-  ): Promise<{ product: Product }> {
-    const product = await this.productRepository.findById(id);
+  @Patch()
+  @HttpCode(204)
+  async handle(
+    @Body(bodyValidationPipe) body: UpdateAvailableProductBodySchema,
+  ) {
+    const {
+      ids,
+      isAvailable,
+    } = body;
 
-    if (!product) {
-      throw new NotFoundException('Product not found');
-    }
-
-    const updatedProduct = await this.productRepository.updateAvailable(id, body.isAvailable);
-
-    return { product: updatedProduct };
+    ids.map(async (id) => {
+      await this.updateAvailableProduct.execute(id, isAvailable);
+    });
   }
 }
